@@ -328,11 +328,11 @@ def plugin_process_vod_season(series, id, data):
             desc = row['description']
 
         if check_key(row, 'image'):
-            if check_key(row['image'], 'portraitUrl'):
-                image = row['image']['portraitUrl']
-            elif check_key(row['image'], 'landscapeUrl'):
+            if check_key(row['image'], 'landscapeUrl'):
                 image = row['image']['landscapeUrl']
-
+            elif check_key(row['image'], 'portraitUrl'):
+                image = row['image']['portraitUrl']
+            
             if not 'http' in image:
                 image_split = image.rsplit('/', 1)
 
@@ -341,8 +341,8 @@ def plugin_process_vod_season(series, id, data):
                 else:
                     image = '{image_url}/{image}'.format(image_url=CONST_URLS['image'], image=image)
 
-        if check_key(row, 'formattedDate') and check_key(row, 'formattedTime'):
-            label += "{date} {time}".format(date=row['formattedDate'], time=row['formattedTime'])
+        if check_key(row, 'broadcastedAt') and check_key(row, 'formattedTime'):
+            label += "{date} {time}".format(date=row['broadcastedAt'][0:10], time=row['formattedTime'])
 
         seasonno = ''
         episodeno = ''
@@ -365,7 +365,7 @@ def plugin_process_vod_season(series, id, data):
 
         season.append({'label': label, 'id': ep_id, 'start': '', 'duration': duration, 'title': episodeTitle, 'seasonNumber': seasonno, 'episodeNumber': episodeno, 'description': desc, 'image': image})
 
-    season[:] = sorted(season, key=sort_episodes)
+    season[:] = sorted(season, key=sort_episodes, reverse=True)
 
     return season
 
