@@ -1272,32 +1272,33 @@ def get_live_channels_v2(all=False):
         channelno = 1
         for currow in data:
             channel = currow['channel']
-
-            path = plugin.url_for(func_or_url=play_video, type='channel', channel=channel['id'], id=channel['id'], _is_live=True)
+            write_file( file='channel', data=channel, isJSON=False )
+            channel_content = channel['content']
+            path = plugin.url_for(func_or_url=play_video, type='channel', channel=channel_content['id'], id=channel_content['id'], _is_live=True)
             playable = True
             if channel["missingSubscriptionFeature"] is not None:
                 playable = False
 
-            id = str(channel['id'])
+            id = str(channel_content['id'])
 
             if all or not prefs or not check_key(prefs, id) or prefs[id]['live'] == 1:
                 context = []
 
                 if CONST_HAS['startfrombeginning']:
                     context = [
-                        (_.START_BEGINNING, 'RunPlugin({context_url})'.format(context_url=plugin.url_for(func_or_url=play_video, type='channel', channel=id, id=str(channel['id']), from_beginning=1, _is_live=True)), ),
+                        (_.START_BEGINNING, 'RunPlugin({context_url})'.format(context_url=plugin.url_for(func_or_url=play_video, type='channel', channel=id, id=str(channel_content['id']), from_beginning=1, _is_live=True)), ),
                     ]
 
                 context = [
-                    (_.SELECT_AUDIO_LANGUAGE, 'RunPlugin({context_url})'.format(context_url=plugin.url_for(func_or_url=play_video, type='channel', channel=id, id=str(channel['id']), from_beginning=0, change_audio=1, _is_live=True)), ),
+                    (_.SELECT_AUDIO_LANGUAGE, 'RunPlugin({context_url})'.format(context_url=plugin.url_for(func_or_url=play_video, type='channel', channel=id, id=str(channel_content['id']), from_beginning=0, change_audio=1, _is_live=True)), ),
                 ]
 
                 channels.append({
-                    'label': str(channel['title']) + ('' if playable else " (NLZIET Extra)"),
+                    'label': str(channel_content['title']) + ('' if playable else " (NLZIET Extra)"),
                     'channel': id,
                     'chno': str(channelno),
                     'description': "",
-                    'image': str(channel["logo"]["normalUrl"]),
+                    'image': str(channel_content["logo"]["normalUrl"]),
                     'path':  path,
                     'playable': playable,
                     'context': context,
