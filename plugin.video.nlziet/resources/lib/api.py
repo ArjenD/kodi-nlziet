@@ -381,13 +381,13 @@ def api_play_url(type, channel=None, id=None, video_data=None, from_beginning=0,
         download = api_download(url=channel_url, type='get', headers=None, data=None, json_data=False, return_json=True)
         data = download['data']
         code = download['code']       
-
+        write_file( file='live.txt', data=data, isJSON=True )
         if not code or not code == 200 or not data:
             return playdata
 
         for row in data["data"]:
-            if row["channel"]["id"] == channel:
-                id = row["programLocations"][0]["assetId"]
+            if row["channel"]["content"]["id"] == channel:
+                id = row["programLocations"][0]["content"]["assetId"]
     elif not type == 'vod':
         detail_url = '{base_url}/v7/content/detail/{id}'.format(base_url=CONST_URLS['api'], id=id)
 
@@ -495,97 +495,45 @@ def api_search(query):
 
     items = {}
 
-    if check_key(data, 'Series'):
-        for row in data['Series']:
-            if not check_key(row, 'SerieId') or not check_key(row, 'Name'):
-                continue
+    write_file(file='data.txt', data=data, isJSON=True)
+    for row in data['data']:
+        write_file(file='row.txt', data=row, isJSON=True)
+        row_content = row['content']
+        write_file(file='content.txt', data=row_content, isJSON=True)
+        if not check_key(row_content, 'id') or not check_key(row_content, 'title'):
+            continue
 
-            items[row['SerieId']] = {}
+        items[row_content['id']] = {}
 
-            desc = ''
-            image = ''
+        desc = ''
+        image = ''
 
-            if check_key(row, 'Omschrijving'):
-                desc = row['Omschrijving']
+        if check_key(row_content, 'subtitle'):
+            desc = row_content['subtitle']
 
-            if check_key(row, 'ProgrammaAfbeelding'):
-                image = row['ProgrammaAfbeelding']
+        if check_key(row_content, 'landscapeUrl'):
+            image = row_content['landscapeUrl']
 
-                if not 'http' in image:
-                    image_split = image.rsplit('/', 1)
+            if not 'http' in image:
+                image_split = image.rsplit('/', 1)
 
-                    if len(image_split) == 2:
-                        image = '{image_url}/legacy/thumbnails/{image}'.format(image_url=CONST_URLS['image'], image=image.rsplit('/', 1)[1])
-                    else:
-                        image = '{image_url}/{image}'.format(image_url=CONST_URLS['image'], image=image)
+                if len(image_split) == 2:
+                    image = '{image_url}/legacy/thumbnails/{image}'.format(image_url=CONST_URLS['image'], image=image.rsplit('/', 1)[1])
+                else:
+                    image = '{image_url}/{image}'.format(image_url=CONST_URLS['image'], image=image)
 
-            items[row['SerieId']]['id'] = row['SerieId']
-            items[row['SerieId']]['title'] = row['Name']
-            items[row['SerieId']]['description'] = desc
-            items[row['SerieId']]['duration'] = 0
-            items[row['SerieId']]['type'] = 'Serie'
-            items[row['SerieId']]['icon'] = image
+        items[row_content['id']]['id'] = row_content['id']
+        items[row_content['id']]['title'] = row_content['type'] + ': ' + row_content['title']
+        items[row_content['id']]['description'] = desc
+        items[row_content['id']]['duration'] = 0
+        items[row_content['id']]['type'] = 'Serie'
+        items[row_content['id']]['icon'] = image
 
-    if check_key(data, 'Videos'):
-        for row in data['Videos']:
-            if not check_key(row, 'Video') or not check_key(row['Video'], 'VideoId') or not check_key(row['Video'], 'VideoType') or (not check_key(row, 'Titel') and (not check_key(row, 'Serie') or not check_key(row['Serie'], 'Titel'))):
-                continue
-
-            id = row['Video']['VideoId']
-            items[id] = {}
-
-            if row['Video']['VideoType'] == 'VOD':
-                type = 'Vod'
-            elif row['Video']['VideoType'] == 'Replay':
-                type = 'Epg'
-            elif row['Video']['VideoType'] == 'Serie':
-                type = 'Serie'
-            else:
-                continue
-
-            basetitle = ''
-            desc = ''
-            start = ''
-            duration = 0
-            image = ''
-
-            if check_key(row, 'Serie') and check_key(row['Serie'], 'Titel'):
-                basetitle = row['Serie']['Titel']
-
-            if check_key(row, 'Titel'):
-                if len(row['Titel']) > 0 and basetitle != row['Titel']:
-                    if len(basetitle) > 0:
-                        basetitle += ": " + row['Titel']
-                    else:
-                        basetitle = row['Titel']
-
-            if check_key(row, 'Omschrijving'):
-                desc = row['Omschrijving']
-
-            if check_key(row, 'Duur'):
-                duration = row['Duur']
-
-            if check_key(row, 'AfbeeldingUrl'):
-                image = row['AfbeeldingUrl']
-
-                if not 'http' in image:
-                    image_split = image.rsplit('/', 1)
-
-                    if len(image_split) == 2:
-                        image = '{image_url}/legacy/thumbnails/{image}'.format(image_url=CONST_URLS['image'], image=image.rsplit('/', 1)[1])
-                    else:
-                        image = '{image_url}/{image}'.format(image_url=CONST_URLS['image'], image=image)
-
-            if check_key(row, 'Uitzenddatum'):
-                start = row['Uitzenddatum']
-
-            items[id]['id'] = id
-            items[id]['title'] = basetitle
-            items[id]['description'] = desc
-            items[id]['duration'] = duration
-            items[id]['type'] = type
-            items[id]['icon'] = image
-            items[id]['start'] = start
+        if row_content['type'] == 'Movie':
+            
+            items[row_content['id']]['duration'] = row_content['durationInSeconds']
+            items[row_content['id']]['type'] = row_content['assetType']
+            items[row_content['id']]['start'] = row_content['broadcastAt']
 
     return items
 
