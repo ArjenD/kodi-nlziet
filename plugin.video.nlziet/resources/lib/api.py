@@ -40,7 +40,7 @@ def api_add_to_watchlist(id, series='', season='', program_type='', type='watchl
     headers = { 'authorization': 'Bearer {id_token}'.format(id_token=profile_settings['access_token'])}
 
     if type == 'continuewatch':
-        watchlist_url = '{base_url}/v8/watchlist/{id}'.format(base_url=CONST_URLS['api'], id=id)
+        watchlist_url = '{base_url}/v7/continueWatching/{id}'.format(base_url=CONST_URLS['api'], id=id)
     elif type == 'watchlist':
         watchlist_url = '{base_url}/v8/trackedseries/{id}'.format(base_url=CONST_URLS['api'], id=id)
 
@@ -149,6 +149,12 @@ def api_get_profiles():
             return_profiles[result['id']]['name'] = result['displayName']
 
     return return_profiles
+    
+def sort_watchlist(element):
+    try:
+        return element['title']
+    except:
+        return 0
 
 def api_list_watchlist(type='watchlist'):
     if not api_get_session():
@@ -158,15 +164,18 @@ def api_list_watchlist(type='watchlist'):
     headers = { 'authorization': 'Bearer {id_token}'.format(id_token=profile_settings['access_token'])}
 
     if type == 'continuewatch':
-        watchlist_url = '{base_url}/v8/watchlist?limit=999&offset=0'.format(base_url=CONST_URLS['api'])
+        watchlist_url = '{base_url}/v7/continueWatching?limit=999'.format(base_url=CONST_URLS['api'])
     elif type == 'watchlist':
-        watchlist_url = '{base_url}/v8/trackedseries?limit=999&offset=0'.format(base_url=CONST_URLS['api'])
+        watchlist_url = '{base_url}/v8/trackedseries?limit=99&offset=0'.format(base_url=CONST_URLS['api'])
 
     download = api_download(url=watchlist_url, type='get', headers=headers, data=None, json_data=False, return_json=True)
+    write_file(file="api_list_watchlist.txt", data=download, isJSON=False)
     data = download['data']
+    write_file(file="api_list_watchlist_data.txt", data=data, isJSON=True)
     code = download['code']
 
     if code and code == 200 and data:
+        data[:] = sorted(data, key=sort_watchlist)
         return data
 
     return None
@@ -174,6 +183,7 @@ def api_list_watchlist(type='watchlist'):
     if not data:
         return None
 
+    data[:] = sorted(data, key=sort_watchlist)
     return data
 
 def api_login(force=False):
@@ -199,7 +209,6 @@ def api_login(force=False):
         id_token_hint = profile_settings['id_token']
 
         authorization_url = "{base_url}?response_type=code&client_id=triple-web&scope=openid api&redirect_uri={app_url}/callback-silent.html&state={state}&code_challenge={code_challenge}&code_challenge_method=S256&response_mode=query&prompt=none&id_token_hint={id_token_hint}".format(base_url=base_authorization_url, app_url=CONST_URLS['app'], state=state, code_challenge=code_challenge, id_token_hint=id_token_hint)
-
         download = api_download(url=authorization_url, type='get', headers=None, data=None, json_data=False, return_json=False, allow_redirects=False)
         data = download['data']
         code = download['code']
@@ -248,8 +257,10 @@ def api_login(force=False):
         save_profile(profile_id=1, profile=profile_settings)
 
         authorization_url = "{base_url}?response_type=code&client_id=triple-web&scope=openid api&redirect_uri={app_url}/callback&state={state}&code_challenge={code_challenge}&code_challenge_method=S256&response_mode=query".format(base_url=base_authorization_url, app_url=CONST_URLS['app'], state=state, code_challenge=code_challenge)
-
+        write_file(file="8a.txt", data=authorization_url, isJSON=False)
+        
         download = api_download(url=authorization_url, type='get', headers=None, data=None, json_data=False, return_json=False, allow_redirects=False)
+        write_file(file="9a.txt", data=download, isJSON=False)
         data = download['data']
         code = download['code']
 
@@ -365,7 +376,7 @@ def api_play_url(type, channel=None, id=None, video_data=None, from_beginning=0,
         pass
 
     if type == 'channel':
-        channel_url = '{base_url}/v8/epg/programlocations/live'.format(base_url=CONST_URLS['api'])
+        channel_url = '{base_url}/v9/epg/programlocations/live'.format(base_url=CONST_URLS['api'])
 
         download = api_download(url=channel_url, type='get', headers=None, data=None, json_data=False, return_json=True)
         data = download['data']
@@ -466,14 +477,15 @@ def api_search(query):
 
     file = os.path.join("cache", "{type}.json".format(type=type))
 
-    if not is_file_older_than_x_days(file=os.path.join(ADDON_PROFILE, file), days=0.5):
+    if False: #not is_file_older_than_x_days(file=os.path.join(ADDON_PROFILE, file), days=0.5):
         data = load_file(file=file, isJSON=True)
     else:
-        search_url = '{base_url}/v7/search/combined?searchterm={query}&maxSerieResults=99999999&maxVideoResults=99999999&expand=true&expandlist=true'.format(base_url=CONST_URLS['api'], query=quote_plus(query))
+        search_url = '{base_url}/v9/search?searchterm={query}&limit=100&offset=0&contentType=Movie&ContentType=Series'.format(base_url=CONST_URLS['api'], query=quote_plus(query))
 
         download = api_download(url=search_url, type='get', headers=None, data=None, json_data=False, return_json=True)
         data = download['data']
         code = download['code']
+        write_file(file="search.json", data=data, isJSON=True)
 
         if code and code == 200 and data:
             write_file(file=file, data=data, isJSON=True)
@@ -626,6 +638,7 @@ def api_set_profile(id=''):
     data = download['data']
     code = download['code']
 
+    write_file(file='switchurl.json', data=data, isJSON=True)
     if not code or not code == 200 or not check_key(data, 'access_token'):
         return False
 
@@ -642,15 +655,16 @@ def api_get_channels_v2(use_cache=True):
     file = os.path.join("cache", "channels-v2.json".format(type=type))
 
     cache = 0
-    if not is_file_older_than_x_days(file=os.path.join(ADDON_PROFILE, file), days=0.5) and use_cache == True:
+    if False: #not is_file_older_than_x_days(file=os.path.join(ADDON_PROFILE, file), days=0.5) and use_cache == True:
         data = load_file(file=file, isJSON=True)
         cache = 1
     else:
-        program_url = '{base_url}/v8/epg/programlocations/live'.format(base_url=CONST_URLS['api'])
+        program_url = '{base_url}/v9/epg/programlocations/live'.format(base_url=CONST_URLS['api'])
         download = api_download(url=program_url, type='get', headers=None, data=None, json_data=False, return_json=True)
         data = download['data']
         code = download['code']
 
+        write_file(file='program_url.json', data=data, isJSON=True)
         if code and code == 200 and data:
             write_file(file=file, data=data, isJSON=True)
 
@@ -662,9 +676,9 @@ def api_vod_download(type, start=0):
     elif type == "movies":
         url = '{base_url}/v8/recommend/movies?limit=9999&offset=0'.format(base_url=CONST_URLS['api'], start=start)
     elif type == "watchaheadnpo":
-        url = '{base_url}/v8/watchinadvance?limit=9999&offset=0&contentProvider=npo'.format(base_url=CONST_URLS['api'], start=start)
+        url = '{base_url}/v7/watchinadvance?limit=9999&offset=0&contentProvider=npo'.format(base_url=CONST_URLS['api'], start=start)
     elif type == "watchahead":
-        url = '{base_url}/v8/watchinadvance?limit=9999&offset=0'.format(base_url=CONST_URLS['api'], start=start)
+        url = '{base_url}/v7/watchinadvance?limit=9999&offset=0'.format(base_url=CONST_URLS['api'], start=start)
     elif type == "seriesbingenpo":
         url = '{base_url}/v8/recommend/series?limit=9999&offset=0&contentProvider=npo'.format(base_url=CONST_URLS['api'], start=start)
     elif type == "seriesbinge":
@@ -678,18 +692,21 @@ def api_vod_download(type, start=0):
     else:
         return None
 
+    type_parameter = type
     type = "vod_{type}_{start}".format(type=type, start=start)
     type = encode32(txt=type)
 
     file = os.path.join("cache", "{type}.json".format(type=type))
 
-    if not is_file_older_than_x_days(file=os.path.join(ADDON_PROFILE, file), days=0.5):
+    if False: #not is_file_older_than_x_days(file=os.path.join(ADDON_PROFILE, file), days=0.5):
         data = load_file(file=file, isJSON=True)
     else:
         download = api_download(url=url, type='get', headers=None, data=None, json_data=False, return_json=True)
+        
         data = download['data']
         code = download['code']
 
+        write_file(file='vod_{type}.json'.format( type=type_parameter), data=data, isJSON=True)
         if code and code == 200 and data:
             write_file(file=file, data=data, isJSON=True)
 
@@ -706,7 +723,7 @@ def api_vod_season(series, id, use_cache=True):
 
     cache = 0
 
-    if not is_file_older_than_x_days(file=os.path.join(ADDON_PROFILE, file), days=0.5) and use_cache == True:
+    if False: #not is_file_older_than_x_days(file=os.path.join(ADDON_PROFILE, file), days=0.5) and use_cache == True:
         data = load_file(file=file, isJSON=True)
         cache = 1
     else:
@@ -714,6 +731,7 @@ def api_vod_season(series, id, use_cache=True):
         download = api_download(url=program_url, type='get', headers=None, data=None, json_data=False, return_json=True)
         data = download['data']
         code = download['code']
+        write_file(file='vod_season.json'.format( type=type), data=data, isJSON=True)
 
         if code and code == 200 and data:
             write_file(file=file, data=data, isJSON=True)
@@ -728,7 +746,7 @@ def api_vod_seasons(type, id, use_cache=True):
 
     cache = 0
 
-    if not is_file_older_than_x_days(file=os.path.join(ADDON_PROFILE, file), days=0.5) and use_cache == True:
+    if False: #not is_file_older_than_x_days(file=os.path.join(ADDON_PROFILE, file), days=0.5) and use_cache == True:
         data = load_file(file=file, isJSON=True)
         cache = 1
     else:
@@ -736,6 +754,7 @@ def api_vod_seasons(type, id, use_cache=True):
         download = api_download(url=program_url, type='get', headers=None, data=None, json_data=False, return_json=True)
         data = download['data']
         code = download['code']
+        write_file(file='vod_seasons.json'.format( type=type), data=data, isJSON=True)
 
         if code and code == 200 and data:
             write_file(file=file, data=data, isJSON=True)
