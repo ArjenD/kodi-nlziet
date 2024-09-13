@@ -222,6 +222,12 @@ def create_stream(type, type2, skip, skiplist):
                     no_cache = False
 
                 if data2:
+                    if 'data' in data2:
+                        data2 = data2['data']
+
+                    if 'content' in data2:
+                         data2 = data2['content']
+
                     if not os.path.isdir(os.path.join(ADDON_PROFILE, "shows", filename)):
                         os.makedirs(os.path.join(ADDON_PROFILE, "shows", filename))
 
@@ -233,8 +239,8 @@ def create_stream(type, type2, skip, skiplist):
                     seriesid = id[1:]
 
                     seriesinfo = {}
-                    seriesinfo['title'] = data2['data']['title']
-                    seriesinfo['id'] = data2['data']['id']
+                    seriesinfo['title'] = data2['title']
+                    seriesinfo['id'] = data2['id']
                     seriesinfo['duration'] = ''
                     seriesinfo['description'] = ''
                     seriesinfo['category'] = ''
@@ -243,23 +249,23 @@ def create_stream(type, type2, skip, skiplist):
                     seriesinfo['icon_still'] = ''
                     seriesinfo['allnumeric'] = 1
 
-                    if check_key(data2['data'], 'description'):
-                        seriesinfo['description'] = data2['data']['description']
+                    if check_key(data2, 'description'):
+                        seriesinfo['description'] = data2['description']
 
-                    if check_key(data2['data'], 'genres'):
-                        seriesinfo['category'] = data2['data']['genres']
+                    if check_key(data2, 'genres'):
+                        seriesinfo['category'] = data2['genres']
 
-                    if check_key(data2['data'], 'startYear'):
-                        seriesinfo['datum'] = str(data2['data']['startYear']) + '0101'
+                    if check_key(data2, 'startYear'):
+                        seriesinfo['datum'] = str(data2['startYear']) + '0101'
 
-                    if check_key(data2['data'], 'image'):
-                        if check_key(data2['data']['image'], 'portraitUrl'):
-                            seriesinfo['icon_poster'] = data2['data']['image']['portraitUrl']
+                    if check_key(data2, 'image'):
+                        if check_key(data2['image'], 'portraitUrl'):
+                            seriesinfo['icon_poster'] = data2['image']['portraitUrl']
 
-                        if check_key(data2['data']['image'], 'landscapeUrl'):
-                            seriesinfo['icon_still'] = data2['data']['image']['landscapeUrl']
+                        if check_key(data2['image'], 'landscapeUrl'):
+                            seriesinfo['icon_still'] = data2['image']['landscapeUrl']
 
-                    for row in data2['data']['seasons']:
+                    for row in data2['seasons']:
                         seasons[row['id']] = {}
                         seasons[row['id']]['title'] = re.sub("[^0-9]", "", str(row['title']).strip())
                         seasons[row['id']]['origtitle'] = str(row['title']).strip()
@@ -282,10 +288,21 @@ def create_stream(type, type2, skip, skiplist):
                         else:
                             data3 = api_vod_season(series=id, id=str(row['id']))
 
+                        #write_file(file='data3.json', data=data3, isJSON=True)
+
+                        if 'data' in data3:
+                            data3 = data3['data']
+                        #write_file(file='data4.json', data=data3, isJSON=True)
+
                         if data3:
                             counter = len(data3['data'])
 
                             for row2 in data3['data']:
+                                if 'content' in row2:
+                                    row2 = row2['content']
+
+                                #write_file(file='row2.json', data=row2, isJSON=True)
+
                                 episodes[row2['id']] = {}
                                 episodes[row2['id']]['title'] = ''
                                 episodes[row2['id']]['id'] = row2['id']                                
@@ -401,7 +418,7 @@ def create_stream(type, type2, skip, skiplist):
                                 if create_nfo_file(filename_ep, episodes[ref], 'episode') == True:
                                     add = True
 
-                        if not data2['cache'] == 1:
+                        if 'cache' not in data2 or not data2['cache'] == 1:
                             xbmc.Monitor().waitForAbort(3)
                             count += 1
 
